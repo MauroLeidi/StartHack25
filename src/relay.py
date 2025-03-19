@@ -1,6 +1,7 @@
 import uuid
 import json
 import os
+from dotenv import load_dotenv
 
 from flask import Flask, request, jsonify
 import azure.cognitiveservices.speech as speechsdk
@@ -11,9 +12,12 @@ from flasgger import Swagger
 from openai import OpenAI
 import io
 
-AZURE_SPEECH_KEY = "See https://starthack.eu/#/case-details?id=21, Case Description"
-AZURE_SPEECH_REGION = "switzerlandnorth"
-OPENAI_KEY = "See https://starthack.eu/#/case-details?id=21, Case Description"
+# Load environment variables
+load_dotenv()
+
+AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
+AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=OPENAI_KEY)
 
 app = Flask(__name__)
@@ -355,4 +359,3 @@ def get_memories(chat_session_id):
 if __name__ == "__main__":
     # In production, you would use a real WSGI server like gunicorn/uwsgi
     app.run(debug=True, host="0.0.0.0", port=5000)
-    
