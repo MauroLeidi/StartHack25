@@ -1,6 +1,11 @@
 import requests
+import os
+from dotenv import load_dotenv
 
-API_KEY = "See https://starthack.eu/#/case-details?id=21, Case Description"
+# Load environment variables
+load_dotenv()
+
+API_KEY = os.getenv("OPENAI_API_KEY")
 URL = "https://api.openai.com/v1/chat/completions"
 
 headers = {
