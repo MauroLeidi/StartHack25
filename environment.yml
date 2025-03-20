@@ -1,4 +1,4 @@
-name: starthack25
+name: starthack25_test
 channels:
   - conda-forge
   - defaults
@@ -6,18 +6,18 @@ dependencies:
   - python=3.12
   - pip
   - numpy
-  - scipy
-  - flask
-  - flasgger
-  - flask-cors
-  - flask-sock
-  - azure-cognitiveservices-speech-sdk
-  - soundfile
-  - librosa
-  - noisereduce
-  - torch
-  - dotenv
-  - uuid
   - pip:
     - openai
-    - df
+    - scipy
+    - flask
+    - flasgger
+    - flask-cors
+    - flask-sock
+    - soundfile
+    - librosa
+    - torch --index-url https://download.pytorch.org/whl/cpu
+    - torchvision --index-url https://download.pytorch.org/whl/cpu
+    - torchaudio --index-url https://download.pytorch.org/whl/cpu
+    - noisereduce
+    - deepfilternet
+    - dotenv
