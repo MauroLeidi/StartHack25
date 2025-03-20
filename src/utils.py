@@ -109,7 +109,7 @@ def merge_sentence(spk_text):
 
 
 
-def extract_speakers_chunks(segments_results,waveform):
+def extract_speakers_chunks(segments_results, waveform):
     # Create a dictionary to hold the speaker's chunks
     speaker_chunks = {}
 

@@ -19,8 +19,11 @@ import io
 import librosa
 import noisereduce as nr
 from scipy.signal import butter, lfilter
-from utils import process_audio_array
+from utils import process_audio_array, extract_speakers_chunks
 import torch
+from speaker_recognition.vector_database import VectorDB
+from speaker_recognition.embedder import AudioEmbedder
+
 # torch only use cpu
 
 if torch.cuda.is_available():
@@ -41,6 +44,11 @@ cors = CORS(app)
 swagger = Swagger(app)
 
 sessions = {}
+
+# Vector database used to store the audio embeddings to perform speaker
+# identification.
+db = VectorDB(preload_audios=True)
+audio_embedder = AudioEmbedder()
 
 #MODEL, DF_STATE, _ = init_df()
 
@@ -268,6 +276,7 @@ def upload_audio_chunk(chat_session_id, session_id):
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
     audio_data = request.get_data()  # raw binary data from the POST body
+    print(audio_data[:10])
     if sessions[session_id]["audio_buffer"] is not None:
         sessions[session_id]["audio_buffer"] = sessions[session_id]["audio_buffer"] + audio_data
     else:
@@ -325,9 +334,16 @@ def close_session(chat_session_id, session_id):
         # SPEAKER DIARIZATION
         # -------------------
         diarization = perform_speaker_diarization(sessions[session_id]["audio_buffer"])
-        
+        speaker_chunks = extract_speakers_chunks(diarization, sessions[session_id]["audio_buffer"])
+
         # SPEAKER IDENTIFICATION
         # -------------------
+        print("SPEAKER CHUNKS", diarization)
+        print("NUM SPEAKERS", len(speaker_chunks))
+        for chunks in speaker_chunks.values():
+          speaker_embeddings = audio_embedder.embed_from_raw(chunks)
+          db.classify_speaker(speaker_embeddings)
+
         #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
 
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
