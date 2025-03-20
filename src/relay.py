@@ -19,7 +19,7 @@ import io
 import librosa
 import noisereduce as nr
 from scipy.signal import butter, lfilter
-from utils import process_audio_array, extract_speakers_chunks
+from utils import perform_speaker_diarization, extract_speakers_chunks
 import torch
 from speaker_recognition.vector_database import VectorDB
 from speaker_recognition.embedder import AudioEmbedder
@@ -93,7 +93,7 @@ def reduce_noise(audio_buffer, use_deep=False):
     audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
     print("Audio shape:", audio.shape)
     # save wav file for debugging as input.wav to /wav
-    sf.write('./wav/input.wav', data=audio, samplerate=sampling_rate)
+    sf.write('./wav/noise_reduce_input.wav', data=audio, samplerate=sampling_rate)
     # apply highpass_filter, remove low frequencies (humming etc.)
     audio = highpass_filter(audio=audio, sr=sampling_rate)
     print("Audio shape after highpass:", audio.shape)
@@ -109,7 +109,7 @@ def reduce_noise(audio_buffer, use_deep=False):
     # enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
     print("Audio shape after reduce noise:", enhanced_audio.shape)
     # save wav file for debugging as output.wav to /wav
-    sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
+    sf.write('./wav/noise_reduce_out.wav', enhanced_audio, samplerate= sampling_rate)
     # back to bytes
     return convert_wav_ndarray_to_bytearray(enhanced_audio, sr = sampling_rate)
 
@@ -158,11 +158,6 @@ def load_wav_file():
   file_path = "./wav/input.wav"
   audio, sampling_rate = sf.read(file_path)
   return audio, sampling_rate
-
-
-def perform_speaker_diarization() -> Dict[Any, Any]:
-  diarization = process_audio_array()
-  return diarization
 
 
 def perform_speaker_identification(diarization: Dict[Any, Any], audio:Any):
