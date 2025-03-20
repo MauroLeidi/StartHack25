@@ -327,12 +327,13 @@ def close_session(chat_session_id, session_id):
 
         audio_messages = []
         for chunks in speaker_chunks.values():
+          print("CHUNKSSSSS:", chunks['chunks'])
           speaker_embeddings = audio_embedder.embed_from_raw(chunks['chunks'])
           speaker_id = db.classify_speaker(speaker_embeddings)
           audio_messages.append(
             {
               'speaker_id': speaker_id,
-              'messages': '. '.join(chunks['texts']),
+              'message': '. '.join(chunks['texts']),
             }
           )
         messages[chat_session_id].append(audio_messages)
@@ -470,7 +471,7 @@ def set_memories(chat_session_id):
 
     for turn in messages[chat_session_id]:
       for message in turn:
-        if speaker_role == 'robot':
+        if message["speaker_id"] == 'robot':
           speaker_role = 'You (Waiter)'
         else:
           speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
@@ -490,10 +491,11 @@ def set_memories(chat_session_id):
     data = load_memories()
 
     # Create or update the session in the data
-    data[session_id] = {
-        "session_id": session_id,
+    data[chat_session_id] = {
+        "chat_session_id": chat_session_id,
         "memory": memory
     }
+    print("SESSIONNNNN", data[chat_session_id])
     save_memories(data)
     return jsonify({"success": "1"})
 
@@ -531,7 +533,7 @@ def get_memories(chat_session_id):
       # get memory from the database for current user
       memory = current_session_data['memory']
     else:
-      memory = ''
+      memory = 'No memories available for the current session.'
     return jsonify({"memories": memory})
 
 
