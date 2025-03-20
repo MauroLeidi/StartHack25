@@ -1,17 +1,14 @@
 from typing import Any
-from df.enhance import enhance, init_df, load_audio, save_audio
-from df.utils import download_file
-import wave
+#from df.enhance import enhance, init_df, load_audio, save_audio
 import uuid
 import json
-import struct
-import torch
+#import torch
 from scipy.io import wavfile
 import os
 from dotenv import load_dotenv
 import numpy as np
 from flask import Flask, request, jsonify
-import azure.cognitiveservices.speech as speechsdk
+#import azure.cognitiveservices.speech as speechsdk
 from flask_sock import Sock
 from flask_cors import CORS
 from flasgger import Swagger
@@ -38,7 +35,7 @@ swagger = Swagger(app)
 
 sessions = {}
 
-MODEL, DF_STATE, _ = init_df()
+#MODEL, DF_STATE, _ = init_df()
 
 def highpass_filter(audio, sr, cutoff=100, order=5):
     nyq = 0.5 * sr
@@ -62,18 +59,18 @@ def bandpass_filter(audio, sr, lowcut=300, highcut=3400, order=5,):
     return lfilter(b, a, audio)
 
   
-def reduce_noise_with_deepfilternet(audio, sr):
-  # resample audio to 48kHz
-  resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
-  # Convert resampled_audio to PyTorch tensor
-  tensor_audio = torch.from_numpy(resampled_audio).float().unsqueeze(0)
-  # print(tensor_audio.shape)
-  enhanced = enhance(MODEL, DF_STATE, tensor_audio)
-  # back to numpy array
-  enhanced = enhanced.squeeze().numpy()
-  # resample back to original rate
-  enhanced = librosa.resample(enhanced, orig_sr=48000, target_sr=sr)
-  return enhanced
+# def reduce_noise_with_deepfilternet(audio, sr):
+#   # resample audio to 48kHz
+#   resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
+#   # Convert resampled_audio to PyTorch tensor
+#   tensor_audio = torch.from_numpy(resampled_audio).float().unsqueeze(0)
+#   # print(tensor_audio.shape)
+#   enhanced = enhance(MODEL, DF_STATE, tensor_audio)
+#   # back to numpy array
+#   enhanced = enhanced.squeeze().numpy()
+#   # resample back to original rate
+#   enhanced = librosa.resample(enhanced, orig_sr=48000, target_sr=sr)
+#   return enhanced
 
 
 def reduce_noise(audio_buffer, use_deep=False):
@@ -91,10 +88,10 @@ def reduce_noise(audio_buffer, use_deep=False):
     audio = normalize_audio(audio)
     print("Audio shape after normalize:", audio.shape)
     # reduce noise
-    if not use_deep:
-      enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
-    else:
-      enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
+    #if not use_deep:
+    #  enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
+    #else:
+    enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
     print("Audio shape after reduce noise:", enhanced_audio.shape)
     # save wav file for debugging as output.wav to /wav
     sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
