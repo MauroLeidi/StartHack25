@@ -8,7 +8,7 @@ import torch
 
 
 
-def process_audio_array():
+def perform_speaker_diarization():
     """
     Process audio bytes to perform diarization and speech-to-text, returning a dictionary
     with speaker segments and transcriptions.
@@ -25,13 +25,13 @@ def process_audio_array():
     )
     
     # Apply diarization (using the BytesIO object)
-    diarization = pipeline("./wav/output.wav")
+    diarization = pipeline("./wav/noise_reduce_out.wav")
     
     # Initialize speech recognition model
     model = whisper.load_model("tiny.en")
     
     # Transcribe audio (using the same BytesIO object)
-    asr_result = model.transcribe("./wav/output.wav")
+    asr_result = model.transcribe("./wav/noise_reduce_out.wav")
     
     # Process results
     timestamp_texts = get_text_with_timestamp(asr_result)
