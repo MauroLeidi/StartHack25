@@ -1,3 +1,4 @@
+import numpy as np
 from typing import Any, Dict
 #from df.enhance import enhance, init_df, load_audio, save_audio
 import uuid
@@ -17,10 +18,12 @@ import soundfile as sf
 from openai import OpenAI
 import io
 import librosa
-import noisereduce as nr
-from scipy.signal import butter, lfilter
-from utils import process_audio_array
+from utils import extract_speakers_chunks, reduce_noise, perform_speaker_diarization
 import torch
+from speaker_recognition.vector_database import VectorDB
+from speaker_recognition.embedder import AudioEmbedder
+from memoryprocessing import load_or_create_summary_persona
+
 # torch only use cpu
 
 if torch.cuda.is_available():
@@ -40,32 +43,18 @@ sock = Sock(app)
 cors = CORS(app)
 swagger = Swagger(app)
 
+MEMORY_FILE = "memories.json"
+
 sessions = {}
+
+# Vector database used to store the audio embeddings to perform speaker
+# identification.
+db = VectorDB(preload_audios=True)
+audio_embedder = AudioEmbedder()
+messages = {}
 
 #MODEL, DF_STATE, _ = init_df()
 
-def highpass_filter(audio, sr, cutoff=100, order=5):
-    nyq = 0.5 * sr
-    normal_cutoff = cutoff / nyq
-    b, a = butter(order, normal_cutoff, btype='high', analog=False)
-    return lfilter(b, a, audio)
-
-
-def normalize_audio(audio):
-    max_val = np.max(np.abs(audio)) 
-    if max_val > 0:
-        audio = audio / max_val
-    return audio
-
-
-def bandpass_filter(audio, sr, lowcut=300, highcut=3400, order=5,):
-    nyq = 0.5 * sr 
-    low = lowcut / nyq
-    high = highcut / nyq
-    b, a = butter(order, [low, high], btype='band', analog=False)
-    return lfilter(b, a, audio)
-
-  
 # def reduce_noise_with_deepfilternet(audio, sr):
 #   # resample audio to 48kHz
 #   resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
@@ -79,45 +68,41 @@ def bandpass_filter(audio, sr, lowcut=300, highcut=3400, order=5,):
 #   enhanced = librosa.resample(enhanced, orig_sr=48000, target_sr=sr)
 #   return enhanced
 
-
-def reduce_noise(audio_buffer, use_deep=False):
-    # from bytes to numpy array
-    audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
-    print("Audio shape:", audio.shape)
-    # save wav file for debugging as input.wav to /wav
-    sf.write('./wav/input.wav', data=audio, samplerate=sampling_rate)
-    # apply highpass_filter, remove low frequencies (humming etc.)
-    audio = highpass_filter(audio=audio, sr=sampling_rate)
-    print("Audio shape after highpass:", audio.shape)
-    # optionally apply bandpass_filter
-    # audio = bandpass_filter(audio, sr=sampling_rate)
-    # normalize audio, emphasisze voices
-    audio = normalize_audio(audio)
-    print("Audio shape after normalize:", audio.shape)
-    # reduce noise
-    #if not use_deep:
-    enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
-    #else:
-    # enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
-    print("Audio shape after reduce noise:", enhanced_audio.shape)
-    # save wav file for debugging as output.wav to /wav
-    sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
-    # back to bytes
-    return convert_wav_ndarray_to_bytearray(enhanced_audio, sr = sampling_rate)
+menu = """
+Menu:
+Starters:
+1. Fried Shrimp with Avocado Tartare - $12.00
+2. Gazpacho Soup with Basil and Ginger - $8.50
+3. Zucchini and Burrata with Cherry Tomatoes - $9.00
+Main Courses:
+1. Grilled Salmon with Lemon Butter Sauce - $22.00
+2. Herb-Crusted Chicken with Roasted Vegetables - $18.50
+3. Vegan Stir-fried Tofu with Vegetables and Rice - $14.00
+4. Classic Beef Burger with Fries - $15.00
+5. Spaghetti Aglio e Olio with Chili Flakes - $13.00
+Desserts:
+1. Chocolate Lava Cake - $7.00
+2. Lemon Sorbet - $5.00
+3. Tiramisu - $6.00
+Drinks:
+1. Sparkling Water - $3.50
+2. Fresh Lemonade - $4.00
+3. Red Wine (Glass) - $7.00
+4. White Wine (Glass) - $7.00
+5. Espresso - $2.50
+6. Iced Tea - $3.00
+Beer:
+1. Lager - $5.00
+2. Pale Ale - $5.50
+3. IPA - $6.00
+4. Stout - $6.00
+"""
 
 
 def convert_wav_ndarray_to_bytearray(wav_ndarray, sr):
     buffer = io.BytesIO()
     sf.write(buffer, wav_ndarray, sr, format='WAV')
     return buffer.getvalue()
-
-
-def convert_bytearray_to_wav_ndarray(byte_array):
-    with io.BytesIO(byte_array) as buffer:
-        audio, sampling_rate = sf.read(buffer)
-    if audio.ndim > 1 and audio.shape[1] > 1:
-        audio = np.mean(audio, axis=1)  # Average left and right channels
-    return audio, sampling_rate
 
 
 def transcribe_whisper(audio_recording):
@@ -151,16 +136,21 @@ def load_wav_file():
   audio, sampling_rate = sf.read(file_path)
   return audio, sampling_rate
 
-def perform_speaker_diarization(audio_buffer) -> Dict[Any, Any]:
-  audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
-  # convert to float32
-  audio = audio.astype(np.float32)
-  diarization = process_audio_array(audio)
-  return diarization
-
 
 def perform_speaker_identification(diarization: Dict[Any, Any], audio:Any):
   return None
+
+def load_memories():
+    """Load stored memories from the file."""
+    if os.path.exists(MEMORY_FILE):
+        with open(MEMORY_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_memories(memories):
+    """Save memories to the file."""
+    with open(MEMORY_FILE, "w") as f:
+        json.dump(memories, f, indent=4)
 
 @app.route("/chats/<chat_session_id>/sessions", methods=["POST"])
 def open_session(chat_session_id):
@@ -317,21 +307,43 @@ def close_session(chat_session_id, session_id):
         return jsonify({"error": "Session not found"}), 404
     if sessions[session_id]["audio_buffer"] is not None:
         # TODO: OUR NEW FLOW, WHATEVER IS DONE HERE IS NOT REALTIME YET
-
+        messages[chat_session_id] = []
         # NOISE REDUCTION
         # -------------------
-        sessions[session_id]["audio_buffer"] = reduce_noise(sessions[session_id]["audio_buffer"])
+        with io.BytesIO(sessions[session_id]["audio_buffer"]) as buffer:
+          audio, sampling_rate = sf.read(buffer)
+          # audio, sampling_rate = sf.read("src/speaker_recognition/audios/diego-1.wav")
+        sessions[session_id]["audio_buffer"], enhanced_audio = reduce_noise(audio, sampling_rate)
 
         # SPEAKER DIARIZATION
         # -------------------
-        diarization = perform_speaker_diarization(sessions[session_id]["audio_buffer"])
-        
+        diarization = perform_speaker_diarization()
+        speaker_chunks = extract_speakers_chunks(diarization, enhanced_audio)
+
         # SPEAKER IDENTIFICATION
         # -------------------
+        print("SPEAKER CHUNKS:", diarization)
+        print("NUM SPEAKERS:", len(speaker_chunks))
+
+        audio_messages = []
+        for chunks in speaker_chunks.values():
+          print("CHUNKSSSSS:", chunks['chunks'])
+          speaker_embeddings = audio_embedder.embed_from_raw(chunks['chunks'])
+          speaker_id = db.classify_speaker(speaker_embeddings)
+          audio_messages.append(
+            {
+              'speaker_id': speaker_id,
+              'message': '. '.join(chunks['texts']),
+            }
+          )
+        messages[chat_session_id].append(audio_messages)
+        print("MESSAGES:", messages)
         #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
         # save audiofile as wav for debug
-        with open(f"audio_{session_id}.wav", "wb") as f:
-            f.write(sessions[session_id]["audio_buffer"])
+
+        # with open(f"audio_{session_id}.wav", "wb") as f:
+        #     f.write(sessions[session_id]["audio_buffer"])
+
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
         # send transcription
         ws = sessions[session_id].get("websocket")
@@ -435,10 +447,58 @@ def set_memories(chat_session_id):
     """
     chat_history = request.get_json()
     
-    # TODO preprocess data (chat history & system message)
-    
-    print(f"{chat_session_id} extracting memories for conversation a:{chat_history[-1]['text']}")
+    messages_robot = [msg['text'] for idx, msg in enumerate(chat_history) if idx % 2 == 1]
 
+    # Iterate through robot messages and append them as individual turns
+    for i, _ in enumerate(messages_robot):
+      robot_turn = [
+          {
+              "speaker_id": "robot",
+              "message": messages_robot[i],
+          }
+      ]
+      messages[chat_session_id].append(robot_turn)
+
+    unique = set(msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn)
+    unique.discard("robot")
+    numspeakers = len(unique)
+
+    # TODO preprocess data (chat history & system message)
+    # Generate a prompt using 1. the messages and 2. who is saying what 3. A general description of the past interactions with the given person
+    # messages are alternating (robot,person,robot,person,robot,person ...)
+    # Generate the structured prompt
+    memory = f"""You are a waiter currently serving a table with {numspeakers} different clients. 
+    Here is the conversation so far:
+    """
+
+    for turn in messages[chat_session_id]:
+      for message in turn:
+        if message["speaker_id"] == 'robot':
+          speaker_role = 'You (Waiter)'
+        else:
+          speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
+        memory += f"{speaker_role} said: {message['message']}\n"
+
+    # we have to check if we stored personal information about the id of the last speaker
+    # summaries = load_or_create_summary_persona()
+    # Ensure summaries DataFrame is not empty before checking
+    # if not summaries.empty and ids[-1] in summaries['user_id'].values:
+      # Retrieve the description
+    #   description = summaries.loc[summaries['user_id'] == ids[-1], 'summary_persona'].iloc[0]
+
+      # Append it to the prompt
+    #   memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
+
+    # Check if the file exists and load the existing data
+    data = load_memories()
+
+    # Create or update the session in the data
+    data[chat_session_id] = {
+        "chat_session_id": chat_session_id,
+        "memory": memory
+    }
+    print("SESSIONNNNN", data[chat_session_id])
+    save_memories(data)
     return jsonify({"success": "1"})
 
 
@@ -469,10 +529,14 @@ def get_memories(chat_session_id):
       404:
         description: Chat session not found.
     """
-    print(f"{chat_session_id}: replacing memories...")
-
-    # TODO load relevant memories from your database. Example return value:
-    return jsonify({"memories": "The guest typically orders menu 1 and a glass of sparkling water."})
+    data = load_memories()
+    if chat_session_id in data:
+      current_session_data = data[chat_session_id]
+      # get memory from the database for current user
+      memory = current_session_data['memory']
+    else:
+      memory = 'No memories available for the current session.'
+    return jsonify({"memories": memory})
 
 
 if __name__ == "__main__":
