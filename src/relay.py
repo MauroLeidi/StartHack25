@@ -19,7 +19,7 @@ import io
 import librosa
 import noisereduce as nr
 from scipy.signal import butter, lfilter
-from utils import perform_speaker_diarization, extract_speakers_chunks
+from utils import process_audio_array, perform_speaker_diarization, extract_speakers_chunks
 import torch
 from speaker_recognition.vector_database import VectorDB
 from speaker_recognition.embedder import AudioEmbedder
