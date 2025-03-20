@@ -1,16 +1,27 @@
+from typing import Any
+from df.enhance import enhance, init_df, load_audio, save_audio
+from df.utils import download_file
+import wave
 import uuid
 import json
+import struct
+import torch
+from scipy.io import wavfile
 import os
 from dotenv import load_dotenv
-
+import numpy as np
 from flask import Flask, request, jsonify
 import azure.cognitiveservices.speech as speechsdk
 from flask_sock import Sock
 from flask_cors import CORS
 from flasgger import Swagger
-
+from scipy.io.wavfile import write
+import soundfile as sf
 from openai import OpenAI
 import io
+import librosa
+import noisereduce as nr
+from scipy.signal import butter, lfilter
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +38,83 @@ swagger = Swagger(app)
 
 sessions = {}
 
+MODEL, DF_STATE, _ = init_df()
+
+def highpass_filter(audio, sr, cutoff=100, order=5):
+    nyq = 0.5 * sr
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='high', analog=False)
+    return lfilter(b, a, audio)
+
+
+def normalize_audio(audio):
+    max_val = np.max(np.abs(audio)) 
+    if max_val > 0:
+        audio = audio / max_val
+    return audio
+
+
+def bandpass_filter(audio, sr, lowcut=300, highcut=3400, order=5,):
+    nyq = 0.5 * sr 
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band', analog=False)
+    return lfilter(b, a, audio)
+
+  
+def reduce_noise_with_deepfilternet(audio, sr):
+  # resample audio to 48kHz
+  resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
+  # Convert resampled_audio to PyTorch tensor
+  tensor_audio = torch.from_numpy(resampled_audio).float().unsqueeze(0)
+  # print(tensor_audio.shape)
+  enhanced = enhance(MODEL, DF_STATE, tensor_audio)
+  # back to numpy array
+  enhanced = enhanced.squeeze().numpy()
+  # resample back to original rate
+  enhanced = librosa.resample(enhanced, orig_sr=48000, target_sr=sr)
+  return enhanced
+
+
+def reduce_noise(audio_buffer, use_deep=False):
+    # from bytes to numpy array
+    audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
+    print("Audio shape:", audio.shape)
+    # save wav file for debugging as input.wav to /wav
+    sf.write('./wav/input.wav', data=audio, samplerate=sampling_rate)
+    # apply highpass_filter, remove low frequencies (humming etc.)
+    audio = highpass_filter(audio=audio, sr=sampling_rate)
+    print("Audio shape after highpass:", audio.shape)
+    # optionally apply bandpass_filter
+    # audio = bandpass_filter(audio, sr=sampling_rate)
+    # normalize audio, emphasisze voices
+    audio = normalize_audio(audio)
+    print("Audio shape after normalize:", audio.shape)
+    # reduce noise
+    if not use_deep:
+      enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
+    else:
+      enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
+    print("Audio shape after reduce noise:", enhanced_audio.shape)
+    # save wav file for debugging as output.wav to /wav
+    sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
+    # back to bytes
+    return convert_wav_ndarray_to_bytearray(enhanced_audio, sr = sampling_rate)
+
+
+def convert_wav_ndarray_to_bytearray(wav_ndarray, sr):
+    buffer = io.BytesIO()
+    sf.write(buffer, wav_ndarray, sr, format='WAV')
+    return buffer.getvalue()
+
+
+def convert_bytearray_to_wav_ndarray(byte_array):
+    with io.BytesIO(byte_array) as buffer:
+        audio, sampling_rate = sf.read(buffer)
+    audio = np.mean(audio, axis=1)  # Average left and right channels
+    return audio, sampling_rate
+
+
 def transcribe_whisper(audio_recording):
     audio_file = io.BytesIO(audio_recording)
     audio_file.name = 'audio.wav'  # Whisper requires a filename with a valid extension
@@ -38,18 +126,20 @@ def transcribe_whisper(audio_recording):
     print(f"openai transcription: {transcription.text}")
     return transcription.text
     
-# def transcribe_preview(session):
-#     if session["audio_buffer"] is not None:
-#         text = transcribe_whisper(session["audio_buffer"])
-#         # send transcription
-#         ws = session.get("websocket")
-#         if ws:
-#             message = {
-#                 "event": "recognizing",
-#                 "text": text,
-#                 "language": session["language"]
-#             }
-#             ws.send(json.dumps(message))
+
+def transcribe_preview(session):
+    if session["audio_buffer"] is not None:
+        text = transcribe_whisper(session["audio_buffer"])
+        # send transcription
+        ws = session.get("websocket")
+        if ws:
+            message = {
+                "event": "recognizing",
+                "text": text,
+                "language": session["language"]
+            }
+            ws.send(json.dumps(message))
+
 
 @app.route("/chats/<chat_session_id>/sessions", methods=["POST"])
 def open_session(chat_session_id):
@@ -156,16 +246,12 @@ def upload_audio_chunk(chat_session_id, session_id):
     """
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
-
     audio_data = request.get_data()  # raw binary data from the POST body
-
     if sessions[session_id]["audio_buffer"] is not None:
         sessions[session_id]["audio_buffer"] = sessions[session_id]["audio_buffer"] + audio_data
     else:
         sessions[session_id]["audio_buffer"] = audio_data
-
-    # TODO optionally transcribe real time audio chunks, see transcribe_preview()
-
+    transcribe_preview(sessions[session_id])
     return jsonify({"status": "audio_chunk_received"})
 
 
@@ -208,10 +294,9 @@ def close_session(chat_session_id, session_id):
     """
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
-
     if sessions[session_id]["audio_buffer"] is not None:
         # TODO preprocess audio/text, extract and save speaker identification
-
+        sessions[session_id]["audio_buffer"] = reduce_noise(sessions[session_id]["audio_buffer"])
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
         # send transcription
         ws = sessions[session_id].get("websocket")
@@ -222,14 +307,12 @@ def close_session(chat_session_id, session_id):
               "language": sessions[session_id]["language"]
           }
           ws.send(json.dumps(message))
-    
     # # Remove from session store
     sessions.pop(session_id, None)
-
     return jsonify({"status": "session_closed"})
 
 
-@sock.route("/ws/chats/<chat_session_id>/sessions/<session_id>")
+@sock.route(path="/ws/chats/<chat_session_id>/sessions/<session_id>")
 def speech_socket(ws, chat_session_id, session_id):
     """
     WebSocket endpoint for clients to receive STT results.
