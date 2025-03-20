@@ -70,32 +70,40 @@ messages = {}
 
 menu = """
 Menu:
-Starters:
-1. Fried Shrimp with Avocado Tartare - $12.00
-2. Gazpacho Soup with Basil and Ginger - $8.50
-3. Zucchini and Burrata with Cherry Tomatoes - $9.00
-Main Courses:
-1. Grilled Salmon with Lemon Butter Sauce - $22.00
-2. Herb-Crusted Chicken with Roasted Vegetables - $18.50
-3. Vegan Stir-fried Tofu with Vegetables and Rice - $14.00
-4. Classic Beef Burger with Fries - $15.00
-5. Spaghetti Aglio e Olio with Chili Flakes - $13.00
-Desserts:
-1. Chocolate Lava Cake - $7.00
-2. Lemon Sorbet - $5.00
-3. Tiramisu - $6.00
-Drinks:
-1. Sparkling Water - $3.50
-2. Fresh Lemonade - $4.00
-3. Red Wine (Glass) - $7.00
-4. White Wine (Glass) - $7.00
-5. Espresso - $2.50
-6. Iced Tea - $3.00
-Beer:
-1. Lager - $5.00
-2. Pale Ale - $5.50
-3. IPA - $6.00
-4. Stout - $6.00
+Daily Specials:
+1. Daily Salad - $7.50
+2. Soup of the Day - Parsnip-Leek Cream Soup with Chive Oil - $7.50
+
+Fish Dishes:
+1. Fish Plate - Duo of Salmon (Norway, farmed) and Pike Perch (Estonia, wild-caught) on Lentil Dal with Curry-Coconut Sauce, Mango Espuma, Coconut Chips and Coriander - $25.50
+2. Fish Recommendation - Pan-fried Pike Perch Fillet (Estonia, wild-caught) with Herb Sauce, Lemon Potato Purée, Leaf Spinach & Garden Cress Oil - $35.50
+
+Meat Dishes:
+1. Meat Plate - Paccheri Pasta "al Ragoût" with Bolognese Sauce, Parmesan Shavings, Crispy Sage and Tomato Oil - $24.50
+2. Chef's Recommendation - Veal Fillet Schnitzel with Lemon Sauce, French Fries and Leaf Spinach - $42.00
+3. Beef Recommendation - Beef Fillet Cubes with Spicy "Stroganoff Sauce", Quark Spaetzle & Leaf Spinach - $43.00
+4. Beef Meatloaf with Red Wine Sauce, Quark Spaetzle & Market Vegetables - $32.00
+5. Burger Recommendation - House Burger in Special Corn Bun with Cheese, Adobo-Chili Mayonnaise, Crispy Onions, Avocado Cream, Iceberg Lettuce, served with French Fries - $28.50
+
+Vegetarian & Vegan:
+1. Vegetarian Plate - Creamy Vegetable-Herb Pasta with Stewed Tomatoes and Parmesan - $22.50
+2. Vegan Plate - Lentil Dal with Curry-Coconut Sauce, Vegetables, Mango Espuma, Coconut Chips & Coriander - $22.50
+
+Candela Specialties:
+1. Scottish Smoked Salmon from our Smoking Boutique in Toggenburg - Horseradish Crème Fraîche, Fried Capers, Avocado, Garden Cress Oil & Toast - $34.50
+2. Sashimi of Tuna & Scottish Salmon - Ponzu Sauce, Wasabi Mayonnaise, Cress, Spring Onions, Pickled Ginger & Green Papaya Salad - $34.50
+3. Octopus Salad with Spicy, Smoked Adobo-Chili Mayonnaise - Sweet Potato Purée, Pickled Red Onions, Nacho Chips & Coriander - $34.50
+4. Beef Tartare prepared with Whisky - Cress, Pickled Vegetables, Herb Yogurt Dip, Mustard Butter & Toast - $34.00
+
+Winter Salads:
+1. Pan-fried Pike Perch Fillet with Herb Cream Sauce - $35.00
+2. Spicy Giant Prawns "Chorizo" - Fermented Garlic, Peperoncini, Parmesan & Tellicherry Pepper - $38.50
+3. 200g Medium-rare Beef Fillet Medallions with Café de Paris - $48.00
+
+Served with our Salad Bowl featuring Swiss Free-range Egg, Various Leafy Greens, Fruits, Vegetables, Roasted Seeds & Nuts with House or Balsamic Dressing
+
+Sides:
+1. Portion of French Fries - $7.00
 """
 
 
@@ -467,8 +475,12 @@ def set_memories(chat_session_id):
     # Generate a prompt using 1. the messages and 2. who is saying what 3. A general description of the past interactions with the given person
     # messages are alternating (robot,person,robot,person,robot,person ...)
     # Generate the structured prompt
-    memory = f"""You are a waiter currently serving a table with {numspeakers} different clients. 
-    Here is the conversation so far:
+    memory = f"""You are a professional waiter in a restaurant serving a table of {numspeakers} different clients. Your job is to take food orders while ensuring:
+    1. The client's order does not conflict with their dietary restrictions. Feel free to ask once to the table for any allergies.
+    2. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu.
+    3. The conversation remains short, engaging and professional.
+    
+    f"\n\n**Recent Conversations with the clients:**\n
     """
 
     for turn in messages[chat_session_id]:
@@ -479,6 +491,7 @@ def set_memories(chat_session_id):
           speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
         memory += f"{speaker_role} said: {message['message']}\n"
 
+    memory += f"\n\n**Today's Menu:**\n{menu}\n\n**Client's Request:**"
     # we have to check if we stored personal information about the id of the last speaker
     # summaries = load_or_create_summary_persona()
     # Ensure summaries DataFrame is not empty before checking
