@@ -3,12 +3,19 @@
 See `https://github.com/facebookresearch/faiss`__.
 """
 
+import sys
 import torch
 import faiss
+import soundfile as sf
+from pathlib import Path
 from .embedder import AudioEmbedder
+from collections import Counter
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utils import reduce_noise
 
 # Adjust according to the model.
-SIMILARITY_THRESHOLD: float = 0.55
+SIMILARITY_THRESHOLD: float = 0.30
 EMBEDDING_DIMS: int = 192
 
 SPEAKER_ID_PREFIX: str = "speaker"
@@ -36,21 +43,35 @@ class VectorDB:
         self.speakers: list[str] = []
         if preload_audios:
             audios_dir = "src/speaker_recognition/audios"
-            audio_files = ["diego-1.wav", "johannes-1.wav", "gio-1.wav", "mauro-1.wav"]
-            embeddings = self.embedder.embed_from_files(audio_files, audios_dir)
+            audio_files = ["diego-3.wav", "johannes-1.wav", "gio-1.wav", "mauro-2.wav"]
+            file_paths = [Path(f"{audios_dir}/{path}") for path in audio_files]
+            file_numpy = [sf.read(file) for file in file_paths]
+            noised_reduced = [reduce_noise(*audio)[1] for audio in file_numpy]
+            embeddings = self.embedder.embed_from_files(noised_reduced)
             self.index.add(embeddings)
             _ = [self._add_speaker() for _ in audio_files]
 
-    def classify_speaker(self, speaker_embeddings: torch.Tensor):
-        similarities, indices = self.index.search(speaker_embeddings, 1)
+    def classify_speaker(self, speaker_embeddings: torch.Tensor) -> str:
+        similarities, indices = self.index.search(speaker_embeddings, 4)
         print("SIMS:", similarities)
         print("INDICES:", indices)
-        # if sim >= self.similarity_threshold:
-        #     print("SPEAKER:", self.speakers[idx])
+        potential_speakers: list[tuple[str, float]] = []
+        for sim, idx in zip(similarities[0], indices[0]):
+            if sim >= self.similarity_threshold:
+                potential_speakers.append((self.speakers[idx], sim))
+        print("POTENTIAL SPEAKERS:", potential_speakers)
+        if potential_speakers:
+            # Order by descending similarity.
+            potential_speakers = sorted(potential_speakers, key=lambda x: x[1], reverse=True)
+            potential_speakers = [x[0] for x in potential_speakers]
+            return Counter(potential_speakers).most_common(1)[0][0]
+        return self._add_speaker()
 
     def _add_speaker(self) -> None:
-        if len(self.speakers) == 0:
-            self.speakers.append(f"{SPEAKER_ID_PREFIX}-00")
+        if not self.speakers:
+            speaker = f"{SPEAKER_ID_PREFIX}-00"
         else:
             last_speaker_count: int = int(self.speakers[-1].split("-")[-1])
-            self.speakers.append(f"{SPEAKER_ID_PREFIX}-{last_speaker_count+1:02d}")
+            speaker = f"{SPEAKER_ID_PREFIX}-{last_speaker_count+1:02d}"
+        self.speakers.append(speaker)
+        return speaker

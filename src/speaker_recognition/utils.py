@@ -14,7 +14,7 @@ speaker_recognition = SpeakerRecognition.from_hparams(
 
 
 def get_embeddings_from_files(audio_paths: str | list[str], audios_dir=None):
-    if len(audio_paths) == 0:
+    if not audio_paths:
         return torch.tensor([])
     elif isinstance(audio_paths, str):
         audio_paths = [audio_paths]
