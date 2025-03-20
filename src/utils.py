@@ -6,6 +6,8 @@ import numpy as np
 import soundfile as sf
 import torch
 
+
+
 def process_audio_array(waveform):
     """
     Process audio bytes to perform diarization and speech-to-text, returning a dictionary
@@ -104,3 +106,31 @@ def merge_sentence(spk_text):
     if len(text_cache) > 0:
         merged_spk_text.append(merge_cache(text_cache))
     return merged_spk_text
+
+
+
+def extract_speakers_chunks(segments_results,waveform):
+    # Create a dictionary to hold the speaker's chunks
+    speaker_chunks = {}
+
+    sampling_rate = 16000
+    # Process the segments to group them by speaker and chunk them
+    for segment in segments_results['segments']:
+        speaker = segment['speaker']
+        start = segment['start']
+        end = segment['end']
+        
+        # Calculate start and end sample indices based on the sampling rate
+        start_sample = int(start * sampling_rate)
+        end_sample = int(end * sampling_rate)
+        
+        # Extract the chunk from the waveform
+        chunk = waveform[start_sample:end_sample]
+        
+        # If the speaker is already in the dictionary, append the chunk to their list, else create a new entry
+        if speaker in speaker_chunks:
+            speaker_chunks[speaker].append(chunk)
+        else:
+            speaker_chunks[speaker] = [chunk]
+
+    return speaker_chunks
