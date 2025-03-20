@@ -18,7 +18,7 @@ import soundfile as sf
 from openai import OpenAI
 import io
 import librosa
-from utils import process_audio_array, extract_speakers_chunks, reduce_noise
+from utils import extract_speakers_chunks, reduce_noise, perform_speaker_diarization
 import torch
 from speaker_recognition.vector_database import VectorDB
 from speaker_recognition.embedder import AudioEmbedder
@@ -307,7 +307,7 @@ def close_session(chat_session_id, session_id):
         return jsonify({"error": "Session not found"}), 404
     if sessions[session_id]["audio_buffer"] is not None:
         # TODO: OUR NEW FLOW, WHATEVER IS DONE HERE IS NOT REALTIME YET
-        messages[session_id] = []
+        messages[chat_session_id] = []
         # NOISE REDUCTION
         # -------------------
         with io.BytesIO(sessions[session_id]["audio_buffer"]) as buffer:
@@ -335,12 +335,12 @@ def close_session(chat_session_id, session_id):
               'messages': '. '.join(chunks['texts']),
             }
           )
-        messages[session_id].append(audio_messages)
+        messages[chat_session_id].append(audio_messages)
         print("MESSAGES:", messages)
         #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
         # save audiofile as wav for debug
-        with open(f"audio_{session_id}.wav", "wb") as f:
-            f.write(sessions[session_id]["audio_buffer"])
+        # with open(f"audio_{session_id}.wav", "wb") as f:
+        #     f.write(sessions[session_id]["audio_buffer"])
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
         # send transcription
         ws = sessions[session_id].get("websocket")
@@ -446,12 +446,8 @@ def set_memories(chat_session_id):
     
     messages_robot = [msg['text'] for idx, msg in enumerate(chat_history) if idx % 2 == 1]
 
-    # Ensure the session exists in messages
-    if chat_session_id not in messages:
-        messages[chat_session_id] = []
-
     # Iterate through robot messages and append them as individual turns
-    for i in range(len(messages_robot)):
+    for i, _ in enumerate(messages_robot):
       robot_turn = [
           {
               "speaker_id": "robot",
@@ -460,10 +456,9 @@ def set_memories(chat_session_id):
       ]
       messages[chat_session_id].append(robot_turn)
 
-    unique = set(mesage["speaker_id"] for turn in messages[session_id] for message in turn)
+    unique = set(msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn)
     unique.discard("robot")
     numspeakers = len(unique)
-
 
     # TODO preprocess data (chat history & system message)
     # Generate a prompt using 1. the messages and 2. who is saying what 3. A general description of the past interactions with the given person
@@ -475,9 +470,10 @@ def set_memories(chat_session_id):
 
     for turn in messages[chat_session_id]:
       for message in turn:
-        speaker_role = message['speaker_id']
         if speaker_role == 'robot':
           speaker_role = 'You (Waiter)'
+        else:
+          speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
         memory += f"{speaker_role} said: {message['message']}\n"
 
     # we have to check if we stored personal information about the id of the last speaker
@@ -490,22 +486,15 @@ def set_memories(chat_session_id):
       # Append it to the prompt
     #   memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
 
-
-    print(f"{chat_session_id} extracting memories for conversation a:{chat_history[-1]['text']}")
     # Check if the file exists and load the existing data
     data = load_memories()
 
     # Create or update the session in the data
-    data[chat_session_id] = {
-        "session_id": chat_session_id,
+    data[session_id] = {
+        "session_id": session_id,
         "memory": memory
     }
-
     save_memories(data)
-    # TODO preprocess data (chat history & system message)
-    
-    print(f"{chat_session_id} extracting memories for conversation a:{chat_history[-1]['text']}")
-
     return jsonify({"success": "1"})
 
 
@@ -537,12 +526,13 @@ def get_memories(chat_session_id):
         description: Chat session not found.
     """
     data = load_memories()
-    currentsessiondata = data[chat_session_id]
-    # get memory from the database for current user
-    memory = currentsessiondata['memory']
-
+    if chat_session_id in data:
+      current_session_data = data[chat_session_id]
+      # get memory from the database for current user
+      memory = current_session_data['memory']
+    else:
+      memory = ''
     return jsonify({"memories": memory})
-    return jsonify({"memories": "The guest typically orders menu 1 and a glass of sparkling water."})
 
 
 if __name__ == "__main__":
