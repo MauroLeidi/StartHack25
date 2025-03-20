@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 #from df.enhance import enhance, init_df, load_audio, save_audio
 import uuid
 import json
@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 import numpy as np
 from flask import Flask, request, jsonify
 #import azure.cognitiveservices.speech as speechsdk
-from flask_sock import Sock
 from flask_cors import CORS
 from flasgger import Swagger
+from flask_sock import Sock
 from scipy.io.wavfile import write
 import soundfile as sf
 from openai import OpenAI
@@ -19,6 +19,13 @@ import io
 import librosa
 import noisereduce as nr
 from scipy.signal import butter, lfilter
+from utils import process_audio_array
+import torch
+# torch only use cpu
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+device = torch.device("cpu")
 
 # Load environment variables
 load_dotenv()
@@ -89,9 +96,9 @@ def reduce_noise(audio_buffer, use_deep=False):
     print("Audio shape after normalize:", audio.shape)
     # reduce noise
     #if not use_deep:
-    #  enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
+    enhanced_audio = nr.reduce_noise(y=audio, sr=sampling_rate, n_fft=512, prop_decrease=0.9)
     #else:
-    enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
+    # enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
     print("Audio shape after reduce noise:", enhanced_audio.shape)
     # save wav file for debugging as output.wav to /wav
     sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
@@ -108,7 +115,8 @@ def convert_wav_ndarray_to_bytearray(wav_ndarray, sr):
 def convert_bytearray_to_wav_ndarray(byte_array):
     with io.BytesIO(byte_array) as buffer:
         audio, sampling_rate = sf.read(buffer)
-    audio = np.mean(audio, axis=1)  # Average left and right channels
+    if audio.ndim > 1 and audio.shape[1] > 1:
+        audio = np.mean(audio, axis=1)  # Average left and right channels
     return audio, sampling_rate
 
 
@@ -137,6 +145,22 @@ def transcribe_preview(session):
             }
             ws.send(json.dumps(message))
 
+
+def load_wav_file():
+  file_path = "./wav/input.wav"
+  audio, sampling_rate = sf.read(file_path)
+  return audio, sampling_rate
+
+def perform_speaker_diarization(audio_buffer) -> Dict[Any, Any]:
+  audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
+  # convert to float32
+  audio = audio.astype(np.float32)
+  diarization = process_audio_array(audio)
+  return diarization
+
+
+def perform_speaker_identification(diarization: Dict[Any, Any], audio:Any):
+  return None
 
 @app.route("/chats/<chat_session_id>/sessions", methods=["POST"])
 def open_session(chat_session_id):
@@ -292,8 +316,20 @@ def close_session(chat_session_id, session_id):
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
     if sessions[session_id]["audio_buffer"] is not None:
-        # TODO preprocess audio/text, extract and save speaker identification
+        # TODO: OUR NEW FLOW, WHATEVER IS DONE HERE IS NOT REALTIME YET
+
+        # NOISE REDUCTION
+        # -------------------
         sessions[session_id]["audio_buffer"] = reduce_noise(sessions[session_id]["audio_buffer"])
+
+        # SPEAKER DIARIZATION
+        # -------------------
+        diarization = perform_speaker_diarization(sessions[session_id]["audio_buffer"])
+        
+        # SPEAKER IDENTIFICATION
+        # -------------------
+        #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
+
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
         # send transcription
         ws = sessions[session_id].get("websocket")
@@ -352,6 +388,7 @@ def speech_socket(ws, chat_session_id, session_id):
         msg = ws.receive()
         if msg is None:
             break
+
 
 @app.route('/chats/<chat_session_id>/set-memories', methods=['POST'])
 def set_memories(chat_session_id):
