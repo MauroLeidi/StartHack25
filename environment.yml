@@ -6,13 +6,18 @@ dependencies:
   - python=3.12
   - pip
   - numpy
-  - pandas
-  - requests
-  - python-dotenv
-  - pytest
-  - black
-  - flake8
+  - scipy
+  - flask
+  - flasgger
+  - flask-cors
+  - flask-sock
+  - azure-cognitiveservices-speech-sdk
+  - soundfile
+  - librosa
+  - noisereduce
+  - torch
+  - dotenv
+  - uuid
   - pip:
     - openai
-    - langchain
-    - poetry
+    - df
