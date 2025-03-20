@@ -166,7 +166,7 @@ def reduce_noise(audio, sampling_rate, use_deep=False):
         audio = np.mean(audio, axis=1)  # Average left and right channels
     print("Audio shape:", audio.shape)
     # save wav file for debugging as input.wav to /wav
-    sf.write('./wav/input.wav', data=audio, samplerate=sampling_rate)
+    sf.write('./wav/noise_reduce_input.wav', data=audio, samplerate=sampling_rate)
     # apply highpass_filter, remove low frequencies (humming etc.)
     audio = highpass_filter(audio=audio, sr=sampling_rate)
     print("Audio shape after highpass:", audio.shape)
@@ -182,6 +182,6 @@ def reduce_noise(audio, sampling_rate, use_deep=False):
     # enhanced_audio = reduce_noise_with_deepfilternet(audio=audio, sr=sampling_rate)
     print("Audio shape after reduce noise:", enhanced_audio.shape)
     # save wav file for debugging as output.wav to /wav
-    sf.write('./wav/output.wav', enhanced_audio, samplerate= sampling_rate)
+    sf.write('./wav/noise_reduce_out.wav', enhanced_audio, samplerate= sampling_rate)
     # back to bytes
     return convert_wav_ndarray_to_bytearray(enhanced_audio, sr = sampling_rate), enhanced_audio
