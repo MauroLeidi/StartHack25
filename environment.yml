@@ -23,3 +23,5 @@ dependencies:
     - dotenv
     - pyannote.audio
     - openai-whisper
+    - pandas
+    - speechbrain
