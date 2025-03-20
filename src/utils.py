@@ -7,6 +7,7 @@ import soundfile as sf
 import torch
 import noisereduce as nr
 from scipy.signal import butter, lfilter
+from funasr import AutoModel
 
 
 
@@ -185,3 +186,25 @@ def reduce_noise(audio, sampling_rate, use_deep=False):
     sf.write('./wav/noise_reduce_out.wav', enhanced_audio, samplerate= sampling_rate)
     # back to bytes
     return convert_wav_ndarray_to_bytearray(enhanced_audio, sr = sampling_rate), enhanced_audio
+
+def recognise_emotion_speech(wav_file_path):
+    """Functions that recognise speech emotion from a given file audio, and returns one of the following values:
+    0: angry 1: disgusted 2: fearful 3: happy 4: neutral 5: other 6: sad 7: surprised 8: unknown
+
+
+    Returns:
+        _type_: _description_
+    """
+    model = AutoModel(model="iic/emotion2vec_plus_base")
+    res = model.generate(wav_file_path, output_dir="./outputs", granularity="utterance", extract_embedding=False)
+
+    labels = res[0]['labels']
+    scores = res[0]['scores']
+
+    # Find the label with the maximum score
+    index_max_score = scores.index(max(scores))
+    max_label = labels[index_max_score]
+    return index_max_score, max_label
+    
+
+
