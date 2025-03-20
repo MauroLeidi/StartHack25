@@ -159,11 +159,9 @@ def load_wav_file():
   audio, sampling_rate = sf.read(file_path)
   return audio, sampling_rate
 
-def perform_speaker_diarization(audio_buffer) -> Dict[Any, Any]:
-  audio, sampling_rate = convert_bytearray_to_wav_ndarray(audio_buffer)
-  # convert to float32
-  audio = audio.astype(np.float32)
-  diarization = process_audio_array(audio)
+
+def perform_speaker_diarization() -> Dict[Any, Any]:
+  diarization = process_audio_array()
   return diarization
 
 
@@ -333,7 +331,7 @@ def close_session(chat_session_id, session_id):
 
         # SPEAKER DIARIZATION
         # -------------------
-        diarization = perform_speaker_diarization(sessions[session_id]["audio_buffer"])
+        diarization = perform_speaker_diarization()
         speaker_chunks = extract_speakers_chunks(diarization, sessions[session_id]["audio_buffer"])
 
         # SPEAKER IDENTIFICATION
