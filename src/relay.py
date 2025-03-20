@@ -340,8 +340,10 @@ def close_session(chat_session_id, session_id):
         print("MESSAGES:", messages)
         #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
         # save audiofile as wav for debug
+
         # with open(f"audio_{session_id}.wav", "wb") as f:
         #     f.write(sessions[session_id]["audio_buffer"])
+
         text = transcribe_whisper(sessions[session_id]["audio_buffer"])
         # send transcription
         ws = sessions[session_id].get("websocket")
