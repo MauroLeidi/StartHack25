@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from jinja2 import Environment, FileSystemLoader
 import pandas as pd
-from .utils import call_openai_api
+from utils import call_openai_api
 
 # File paths for storing memory and user summaries
 summary_persona_file_path = '../data/summary_personas.csv'
