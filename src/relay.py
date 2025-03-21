@@ -348,7 +348,7 @@ def close_session(chat_session_id, session_id):
         cls_speakers = []
         for chunks in speaker_chunks.values():
             print("CHUNKS:", chunks)
-            if chunks["chunks"][0].size == 0:
+            if any(chnk.size == 0 for chnk in chunks["chunks"]):
                 continue
             speaker_embeddings = audio_embedder.embed_from_raw(chunks["chunks"])
             speaker_id = None
@@ -356,6 +356,7 @@ def close_session(chat_session_id, session_id):
                 if speaker not in cls_speakers:
                     speaker_id = speaker
                     cls_speakers.append(speaker)
+                    break
             if speaker_id is None:
                 speaker_id = db.add_speaker()
             audio_messages.append(
@@ -520,19 +521,24 @@ def set_memories(chat_session_id):
                   speaker_role = f"Client {message['speaker_id']}"
             memory += f"{speaker_role} said: {message['message']}\n"
 
-    memory += f"\n\n**Here is the Menu:**\n{menu}\n\n**Client's Request:**"
+    memory += f"\n\nHere is the Menu:\n{menu}\n\n"
     # we have to check if we stored personal information about the id of the last speaker
     summaries = load_or_create_summary_persona()
 
     last_speaker_id = messages[chat_session_id][-1][-1]["speaker_id"]
+    print("LAST SPEAKER ID")
+    print(last_speaker_id)
+    print(summaries["user_id"].values)
     # Ensure summaries DataFrame is not empty before checking
     if not summaries.empty and last_speaker_id in summaries["user_id"].values:
         # Retrieve the description
         description = summaries.loc[
             summaries["user_id"] == last_speaker_id, "summary_persona"
         ].iloc[0]
+        print(description)
         # Append it to the prompt if description is not empty
-        memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
+        memory += f"\n\n\n Important information about the person you need to reply (which you may use): {description}"
+        print(memory)
 
     # Check if the file exists and load the existing data
     data = load_memories()
