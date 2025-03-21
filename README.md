@@ -24,7 +24,11 @@
   <a href="#contributing">Contributing</a>
 </p>
 
-## Key Features
+# Introduction
+
+This project is our submission for the [Helbling](https://www.helbling.ch/) challenge at [START Hack 2025](https://www.startglobal.org/start-hack/home/). The challenge tasked us with developing an AI assistant capable of distinguishing multiple voices in a noisy environment, simulating an autonomous waiter in a bustling restaurant setting. Our solution, Adaptis, leverages advanced voice recognition and natural language processing to create a seamless interaction between customers and the AI waiter, showcasing the potential of AI in enhancing customer service in the hospitality industry.
+
+# Key Features
 
 * **Multi-Speaker Recognition** - Identifies different speakers in a conversation using voice embeddings
 * **Single-Message Multi-Speaker Compatibility** - Each message can contain voice from multiple clients, the voices and content will be separated and treated accordingly.
@@ -35,13 +39,13 @@
 * **Privacy-Focused** - Built with data security and user privacy as core principles
 
 
-## Components
+# Components
 
 The system architecture consists of multiple specialized modules:
 
 ![image](img/architecture.png)
 
-### Speaker Recognition Module
+# Speaker Recognition Module
 
 Implements real-time speaker identification using SpeechBrain's ECAPA-VOXCELEB model for generating voice embeddings and FAISS for efficient similarity search. The system:
 - Generates 192-dimensional speaker embeddings using SpeechBrain
@@ -49,13 +53,13 @@ Implements real-time speaker identification using SpeechBrain's ECAPA-VOXCELEB m
 - Maintains a dynamic speaker database with automatic new speaker registration
 - Supports preloading of known speaker profiles
 
-### Audio Processing Pipeline
+# Audio Processing Pipeline
 
 ```
 Raw Audio → DeepFilterNet Noise Reduction → High-pass Filtering (100Hz) → Audio Normalization → Pyannote Speaker Diarization → Whisper Transcription
 ```
 
-### Memory Management System
+# Memory Management System
 
 Implements a persona-based memory system that:
 - Maintains conversation history and speaker profiles
@@ -63,7 +67,7 @@ Implements a persona-based memory system that:
 - Groups conversations by speaker for contextual memory retrieval
 - Supports real-time updates and persistence of conversation context
 
-### API Server
+# API Server
 
 Flask-based server providing:
 - RESTful endpoints for audio processing and transcription
@@ -71,7 +75,7 @@ Flask-based server providing:
 - Session management for continuous voice recognition
 - Memory persistence and retrieval endpoints
 
-## Project Structure
+# Project Structure
 
 ```
 └── StartHack25
@@ -92,15 +96,15 @@ Flask-based server providing:
         └── websocket_adapter.py   # WebSocket client for real-time streaming
 ```
 
-## Installation
+# Installation
 
-### Prerequisites
+## Prerequisites
 
 - Python 3.12+
 - PyTorch
 - CUDA (optional, for GPU acceleration)
 
-### Setup
+## Setup
 
 1. Clone the repository:
    ```
@@ -129,5 +133,10 @@ Flask-based server providing:
    ```
    python src/relay.py
    ```
+
+# Limitations
+
+
+
 # Remarks
 This implementation is based on the following repository: https://github.com/START-Hack/Helbling_STARTHACK25/tree/main

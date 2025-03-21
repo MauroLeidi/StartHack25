@@ -10,8 +10,8 @@ function App() {
         <div className="nav-brand">
           <img src={logo} alt="Logo" className="nav-logo" />
           <div className="brand-text">
-            <h1 className="app-name">VoiceOasis</h1>
-            <div className="tech-tagline">AI-Powered Voice Assistant</div>
+            <h1 className="app-name">ADAPTIS</h1>
+            <div className="tech-tagline">Working With You to Deliver More.</div>
           </div>
         </div>
       </nav>
