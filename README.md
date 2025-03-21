@@ -2,11 +2,13 @@
   <img src="img/logo.png" alt="Logo" width="150" height="150">
 </p>
 <h1 align="center">
-  <br>
-  Adaptis
-  <br>
+  Adaptis <br>
+  Working With You to Deliver More.
 </h1>
-<h2 align="center">Working With You to Deliver More.</h2>
+<p align="center">
+<a href="./presentation.pptx">Presentation (PowerPoint)</a> •
+<a href="./presentation.pdf">Presentation (PDF)</a>
+</p>
 
 <h4 align="center">An advanced voice recognition system for multi-speaker environments with contextual memory</h4>
 
