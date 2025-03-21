@@ -136,6 +136,14 @@ Flask-based server providing:
 
 # Limitations
 
+# Limitations
+
+- LLM Hallucinations: The system may occasionally produce inaccurate or irrelevant responses due to limitations in language model understanding.
+- Incomplete Dockerization: The current implementation lacks full containerization, which may affect deployment consistency across different environments.
+- Performance in Noisy Environments: In scenarios with multiple background voices, the denoising algorithm's effectiveness may be reduced, impacting overall system performanc, although it should still be considered reliable.
+- Ongoing Denoising Improvements: Further refinement of the noise reduction techniques is needed to enhance audio quality in challenging acoustic environments.
+- Frontend Integration: Due to limited access to the frontend application and the actual system prompt of the agent, some features may not be fully optimized for user interaction.
+- Memory Management Workarounds: The current implementation of memory management relies on temporary solutions, which may impact long-term scalability and efficiency.
 
 
 # Remarks
