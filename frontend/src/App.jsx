@@ -34,7 +34,7 @@ function App() {
         <div className="footer-content">
           <div className="footer-text">START Hack 2025</div>
           <div className="footer-logos">
-            <img src={startGlobalLogo} alt="START Global Logo" className="footer-logo" />
+            <img src={startGlobalLogo} alt="START Global Logo" className="start-global-logo" />
             <div className="helbling-logos">
               <img src={helblingLogo} alt="Helbling Logo" className="footer-logo" />
               <svg className="helbling-logo" xmlns="http://www.w3.org/2000/svg" width="159" height="38" viewBox="1 0.6 738 174">
