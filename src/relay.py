@@ -1,28 +1,32 @@
-import numpy as np
-from typing import Any, Dict
-#from df.enhance import enhance, init_df, load_audio, save_audio
-import uuid
-import json
-#import torch
-from scipy.io import wavfile
-import os
-from dotenv import load_dotenv
-import numpy as np
-from flask import Flask, request, jsonify
-#import azure.cognitiveservices.speech as speechsdk
-from flask_cors import CORS
-from flasgger import Swagger
-from flask_sock import Sock
-from scipy.io.wavfile import write
-import soundfile as sf
-from openai import OpenAI
 import io
+import json
+import os
+
+# from df.enhance import enhance, init_df, load_audio, save_audio
+import uuid
+from typing import Any, Dict
+
 import librosa
-from utils import extract_speakers_chunks, reduce_noise, perform_speaker_diarization
+import numpy as np
+import soundfile as sf
 import torch
-from speaker_recognition.vector_database import VectorDB
-from speaker_recognition.embedder import AudioEmbedder
+from dotenv import load_dotenv
+from flasgger import Swagger
+from flask import Flask, jsonify, request
+
+# import azure.cognitiveservices.speech as speechsdk
+from flask_cors import CORS
+from flask_sock import Sock
+from openai import OpenAI
+
+# import torch
+from scipy.io import wavfile
+from scipy.io.wavfile import write
+
 from memoryprocessing import load_or_create_summary_persona
+from speaker_recognition.embedder import AudioEmbedder
+from speaker_recognition.vector_database import VectorDB
+from utils import extract_speakers_chunks, perform_speaker_diarization, reduce_noise
 
 # torch only use cpu
 
@@ -53,11 +57,11 @@ db = VectorDB(preload_audios=True)
 audio_embedder = AudioEmbedder()
 messages = {}
 
-#MODEL, DF_STATE, _ = init_df()
+# MODEL, DF_STATE, _ = init_df()
 
 # def reduce_noise_with_deepfilternet(audio, sr):
 #   # resample audio to 48kHz
-#   resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
+#   resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)
 #   # Convert resampled_audio to PyTorch tensor
 #   tensor_audio = torch.from_numpy(resampled_audio).float().unsqueeze(0)
 #   # print(tensor_audio.shape)
@@ -109,21 +113,21 @@ Sides:
 
 def convert_wav_ndarray_to_bytearray(wav_ndarray, sr):
     buffer = io.BytesIO()
-    sf.write(buffer, wav_ndarray, sr, format='WAV')
+    sf.write(buffer, wav_ndarray, sr, format="WAV")
     return buffer.getvalue()
 
 
 def transcribe_whisper(audio_recording):
     audio_file = io.BytesIO(audio_recording)
-    audio_file.name = 'audio.wav'  # Whisper requires a filename with a valid extension
+    audio_file.name = "audio.wav"  # Whisper requires a filename with a valid extension
     transcription = client.audio.transcriptions.create(
         model="whisper-1",
         file=audio_file,
-        #language = ""  # specify Language explicitly
+        # language = ""  # specify Language explicitly
     )
     print(f"openai transcription: {transcription.text}")
     return transcription.text
-    
+
 
 def transcribe_preview(session):
     if session["audio_buffer"] is not None:
@@ -134,19 +138,20 @@ def transcribe_preview(session):
             message = {
                 "event": "recognizing",
                 "text": text,
-                "language": session["language"]
+                "language": session["language"],
             }
             ws.send(json.dumps(message))
 
 
 def load_wav_file():
-  file_path = "./wav/input.wav"
-  audio, sampling_rate = sf.read(file_path)
-  return audio, sampling_rate
+    file_path = "./wav/input.wav"
+    audio, sampling_rate = sf.read(file_path)
+    return audio, sampling_rate
 
 
-def perform_speaker_identification(diarization: Dict[Any, Any], audio:Any):
-  return None
+def perform_speaker_identification(diarization: Dict[Any, Any], audio: Any):
+    return None
+
 
 def load_memories():
     """Load stored memories from the file."""
@@ -155,10 +160,12 @@ def load_memories():
             return json.load(f)
     return {}
 
+
 def save_memories(memories):
     """Save memories to the file."""
     with open(MEMORY_FILE, "w") as f:
         json.dump(memories, f, indent=4)
+
 
 @app.route("/chats/<chat_session_id>/sessions", methods=["POST"])
 def open_session(chat_session_id):
@@ -213,7 +220,7 @@ def open_session(chat_session_id):
         "audio_buffer": None,
         "chatSessionId": chat_session_id,
         "language": language,
-        "websocket": None  # will be set when the client connects via WS
+        "websocket": None,  # will be set when the client connects via WS
     }
 
     return jsonify({"session_id": session_id})
@@ -267,7 +274,9 @@ def upload_audio_chunk(chat_session_id, session_id):
         return jsonify({"error": "Session not found"}), 404
     audio_data = request.get_data()  # raw binary data from the POST body
     if sessions[session_id]["audio_buffer"] is not None:
-        sessions[session_id]["audio_buffer"] = sessions[session_id]["audio_buffer"] + audio_data
+        sessions[session_id]["audio_buffer"] = (
+            sessions[session_id]["audio_buffer"] + audio_data
+        )
     else:
         sessions[session_id]["audio_buffer"] = audio_data
     transcribe_preview(sessions[session_id])
@@ -278,7 +287,7 @@ def upload_audio_chunk(chat_session_id, session_id):
 def close_session(chat_session_id, session_id):
     """
     Close the session (stop recognition, close push stream, cleanup).
-    
+
     ---
     tags:
       - Sessions
@@ -319,9 +328,11 @@ def close_session(chat_session_id, session_id):
         # NOISE REDUCTION
         # -------------------
         with io.BytesIO(sessions[session_id]["audio_buffer"]) as buffer:
-          audio, sampling_rate = sf.read(buffer)
-          # audio, sampling_rate = sf.read("src/speaker_recognition/audios/diego-1.wav")
-        sessions[session_id]["audio_buffer"], enhanced_audio = reduce_noise(audio, sampling_rate)
+            audio, sampling_rate = sf.read(buffer)
+            # audio, sampling_rate = sf.read("src/speaker_recognition/audios/diego-1.wav")
+        sessions[session_id]["audio_buffer"], enhanced_audio = reduce_noise(
+            audio, sampling_rate
+        )
 
         # SPEAKER DIARIZATION
         # -------------------
@@ -336,26 +347,26 @@ def close_session(chat_session_id, session_id):
         audio_messages = []
         cls_speakers = []
         for chunks in speaker_chunks.values():
-          print("CHUNKS:", chunks)
-          if chunks['chunks'][0].size == 0:
-            continue
-          speaker_embeddings = audio_embedder.embed_from_raw(chunks['chunks'])
-          speaker_id = None
-          for speaker in db.classify_speaker(speaker_embeddings):
-            if speaker not in cls_speakers:
-              speaker_id = speaker 
-              cls_speakers.append(speaker)
-          if speaker_id is None:
-            speaker_id = db.add_speaker()
-          audio_messages.append(
-            {
-              'speaker_id': speaker_id,
-              'message': '. '.join(chunks['texts']),
-            }
-          )
+            print("CHUNKS:", chunks)
+            if chunks["chunks"][0].size == 0:
+                continue
+            speaker_embeddings = audio_embedder.embed_from_raw(chunks["chunks"])
+            speaker_id = None
+            for speaker in db.classify_speaker(speaker_embeddings):
+                if speaker not in cls_speakers:
+                    speaker_id = speaker
+                    cls_speakers.append(speaker)
+            if speaker_id is None:
+                speaker_id = db.add_speaker()
+            audio_messages.append(
+                {
+                    "speaker_id": speaker_id,
+                    "message": ". ".join(chunks["texts"]),
+                }
+            )
         messages[chat_session_id].append(audio_messages)
         print("MESSAGES:", messages)
-        #current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
+        # current_speaker = perform_speaker_identification(diarization, sessions[session_id]["audio_buffer"])
         # save audiofile as wav for debug
 
         # with open(f"audio_{session_id}.wav", "wb") as f:
@@ -365,12 +376,12 @@ def close_session(chat_session_id, session_id):
         # send transcription
         ws = sessions[session_id].get("websocket")
         if ws:
-          message = {
-              "event": "recognized",
-              "text": text,
-              "language": sessions[session_id]["language"]
-          }
-          ws.send(json.dumps(message))
+            message = {
+                "event": "recognized",
+                "text": text,
+                "language": sessions[session_id]["language"],
+            }
+            ws.send(json.dumps(message))
     # # Remove from session store
     sessions.pop(session_id, None)
     return jsonify({"status": "session_closed"})
@@ -382,7 +393,7 @@ def speech_socket(ws, chat_session_id, session_id):
     WebSocket endpoint for clients to receive STT results.
 
     This WebSocket allows clients to connect and receive speech-to-text (STT) results
-    in real time. The connection is maintained until the client disconnects. If the 
+    in real time. The connection is maintained until the client disconnects. If the
     session ID is invalid, an error message is sent, and the connection is closed.
 
     ---
@@ -421,7 +432,7 @@ def speech_socket(ws, chat_session_id, session_id):
             break
 
 
-@app.route('/chats/<chat_session_id>/set-memories', methods=['POST'])
+@app.route("/chats/<chat_session_id>/set-memories", methods=["POST"])
 def set_memories(chat_session_id):
     """
     Set memories for a specific chat session.
@@ -463,19 +474,23 @@ def set_memories(chat_session_id):
         description: Invalid request data.
     """
     chat_history = request.get_json()
-    messages_robot = [msg['text'] for idx, msg in enumerate(chat_history) if idx % 2 == 0]
+    messages_robot = [
+        msg["text"] for idx, msg in enumerate(chat_history) if idx % 2 == 0
+    ]
 
     # Iterate through robot messages and append them as individual turns
     for i, _ in enumerate(messages_robot):
-      robot_turn = [
-          {
-              "speaker_id": "robot",
-              "message": messages_robot[i],
-          }
-      ]
-      messages[chat_session_id].append(robot_turn)
+        robot_turn = [
+            {
+                "speaker_id": "robot",
+                "message": messages_robot[i],
+            }
+        ]
+        messages[chat_session_id].append(robot_turn)
 
-    unique = set(msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn)
+    unique = set(
+        msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn
+    )
     unique.discard("robot")
     numspeakers = len(unique)
 
@@ -493,12 +508,12 @@ def set_memories(chat_session_id):
 
     print("CHAT SESSIONNNNNNNN:", messages[chat_session_id])
     for turn in messages[chat_session_id]:
-      for message in turn:
-        if message["speaker_id"] == 'robot':
-          speaker_role = 'You (Waiter)'
-        else:
-          speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
-        memory += f"{speaker_role} said: {message['message']}\n"
+        for message in turn:
+            if message["speaker_id"] == "robot":
+                speaker_role = "You (Waiter)"
+            else:
+                speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
+            memory += f"{speaker_role} said: {message['message']}\n"
 
     memory += f"\n\n**Here is the Menu:**\n{menu}\n\n**Client's Request:**"
     # we have to check if we stored personal information about the id of the last speaker
@@ -506,26 +521,25 @@ def set_memories(chat_session_id):
 
     last_speaker_id = messages[chat_session_id][-1][-1]["speaker_id"]
     # Ensure summaries DataFrame is not empty before checking
-    if not summaries.empty and last_speaker_id in summaries['user_id'].values:
-      # Retrieve the description
-      description = summaries.loc[summaries['user_id'] == last_speaker_id, 'summary_persona'].iloc[0]
-      # Append it to the prompt if description is not empty
-      memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
+    if not summaries.empty and last_speaker_id in summaries["user_id"].values:
+        # Retrieve the description
+        description = summaries.loc[
+            summaries["user_id"] == last_speaker_id, "summary_persona"
+        ].iloc[0]
+        # Append it to the prompt if description is not empty
+        memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
 
     # Check if the file exists and load the existing data
     data = load_memories()
 
     # Create or update the session in the data
-    data[chat_session_id] = {
-        "chat_session_id": chat_session_id,
-        "memory": memory
-    }
+    data[chat_session_id] = {"chat_session_id": chat_session_id, "memory": memory}
     print("SESSION", data[chat_session_id])
     save_memories(data)
     return jsonify({"success": "1"})
 
 
-@app.route('/chats/<chat_session_id>/get-memories', methods=['GET'])
+@app.route("/chats/<chat_session_id>/get-memories", methods=["GET"])
 def get_memories(chat_session_id):
     """
     Retrieve stored memories for a specific chat session.
@@ -554,11 +568,11 @@ def get_memories(chat_session_id):
     """
     data = load_memories()
     if chat_session_id in data:
-      current_session_data = data[chat_session_id]
-      # get memory from the database for current user
-      memory = current_session_data['memory']
+        current_session_data = data[chat_session_id]
+        # get memory from the database for current user
+        memory = current_session_data["memory"]
     else:
-      memory = 'No memories available for the current session.'
+        memory = "No memories available for the current session."
     return jsonify({"memories": memory})
 
 
