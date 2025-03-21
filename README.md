@@ -6,8 +6,8 @@
   Working With You to Deliver More.
 </h1>
 <p align="center">
-<a href="./Start Hack – ADAPTIS.pptx">Presentation (PowerPoint)</a> •
-<a href="./Start Hack – ADAPTIS.pdf">Presentation (PDF)</a> •
+<a href="./INSPECT_Start_Hack_ADAPTIS.pptx">Presentation (PowerPoint)</a> •
+<a href="./INSPECT_Start_Hack_ADAPTIS.pdf">Presentation (PDF)</a> •
 <a href="./demo.mp4">Demo (Video)</a>
 </p>
 
