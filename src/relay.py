@@ -323,6 +323,7 @@ def close_session(chat_session_id, session_id):
     if session_id not in sessions:
         return jsonify({"error": "Session not found"}), 404
     if sessions[session_id]["audio_buffer"] is not None:
+        first_time = chat_session_id not in messages
         # TODO: OUR NEW FLOW, WHATEVER IS DONE HERE IS NOT REALTIME YET
         messages[chat_session_id] = []
         # NOISE REDUCTION
@@ -348,9 +349,10 @@ def close_session(chat_session_id, session_id):
         cls_speakers = []
         for chunks in speaker_chunks.values():
             print("CHUNKS:", chunks)
-            if any(chnk.size == 0 for chnk in chunks["chunks"]):
-                continue
-            speaker_embeddings = audio_embedder.embed_from_raw(chunks["chunks"])
+            chnks = [chnk for chnk in chunks["chunks"] if chnk.size > 0]
+            if not chnks:
+              continue
+            speaker_embeddings = audio_embedder.embed_from_raw(chnks)
             speaker_id = None
             for speaker in db.classify_speaker(speaker_embeddings):
                 if speaker not in cls_speakers:
@@ -363,6 +365,13 @@ def close_session(chat_session_id, session_id):
                 {
                     "speaker_id": speaker_id,
                     "message": ". ".join(chunks["texts"]),
+                }
+            )
+        if not audio_messages:
+            audio_messages.append(
+                {
+                    "speaker_id": "speaker-00",
+                    "message": "Transcription not available.",
                 }
             )
         messages[chat_session_id].append(audio_messages)
@@ -385,6 +394,9 @@ def close_session(chat_session_id, session_id):
             ws.send(json.dumps(message))
     # # Remove from session store
     sessions.pop(session_id, None)
+    print("FIRST TIMEEEEEEEEEE:", first_time)
+    if first_time:
+      _set_memories(chat_session_id)
     return jsonify({"status": "session_closed"})
 
 
@@ -491,6 +503,11 @@ def set_memories(chat_session_id):
         ]
         messages[chat_session_id].insert(i, robot_turn)
 
+    _set_memories(chat_session_id)
+    return jsonify({"success": "1"})
+
+
+def _set_memories(chat_session_id):
     unique = set(
         msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn
     )
@@ -502,9 +519,10 @@ def set_memories(chat_session_id):
     # messages are alternating (robot,person,robot,person,robot,person ...)
     # Generate the structured prompt
     memory = f"""You are a professional waiter in a restaurant serving a table of {numspeakers} different clients. Your job is to take food orders while ensuring:
-    1. The client's order does not conflict with their dietary restrictions. Feel free to ask once to the table for any allergies.
-    2. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu. Make sure you ONLY suggest plates Existing on the menu.
-    3. The conversation remains short, engaging and professional.    
+    1. Always, address the client by their name.
+    2. The client's order does not conflict with their dietary restrictions. Feel free to ask once to the table for any allergies.
+    3. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu. Make sure you ONLY suggest plates Existing on the menu.
+    4. The conversation remains short, engaging and professional.    
     
     f"\n\n**Recent Conversations with the clients:**\n
     """
@@ -521,7 +539,7 @@ def set_memories(chat_session_id):
                   speaker_role = f"Client {message['speaker_id']}"
             memory += f"{speaker_role} said: {message['message']}\n"
 
-    memory += f"\n\nHere is the Menu:\n{menu}\n\n"
+    # memory += f"\n\nHere is the Menu:\n{menu}\n\n"
     # we have to check if we stored personal information about the id of the last speaker
     summaries = load_or_create_summary_persona()
 
@@ -537,7 +555,7 @@ def set_memories(chat_session_id):
         ].iloc[0]
         print(description)
         # Append it to the prompt if description is not empty
-        memory += f"\n\n\n Important information about the person you need to reply (which you may use): {description}"
+        memory += f"\n\n\n[**Important Note**: In order to help the business, it is very important that you show a friendly attitude towards clients, e.g., by addressing them by their name.] {description}"
         print(memory)
 
     # Check if the file exists and load the existing data
@@ -547,7 +565,6 @@ def set_memories(chat_session_id):
     data[chat_session_id] = {"chat_session_id": chat_session_id, "memory": memory}
     print("SESSION", data[chat_session_id])
     save_memories(data)
-    return jsonify({"success": "1"})
 
 
 @app.route("/chats/<chat_session_id>/get-memories", methods=["GET"])
