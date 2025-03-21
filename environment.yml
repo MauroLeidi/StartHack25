@@ -1,11 +1,13 @@
 name: starthack25_test
 channels:
+  # - pytorch
   - conda-forge
   - defaults
 dependencies:
   - python=3.12
   - pip
   - numpy
+  # - faiss-cpu
   - pip:
     - openai
     - scipy
@@ -19,7 +21,7 @@ dependencies:
     - torchvision --index-url https://download.pytorch.org/whl/cpu
     - torchaudio --index-url https://download.pytorch.org/whl/cpu
     - noisereduce
-    - deepfilternet
+    # - deepfilternet
     - dotenv
     - pyannote.audio
     - openai-whisper
@@ -27,3 +29,4 @@ dependencies:
     - speechbrain
     - funasr
     - python-dotenv
+    - python-ffmpeg

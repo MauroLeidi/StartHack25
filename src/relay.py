@@ -334,10 +334,19 @@ def close_session(chat_session_id, session_id):
         print("NUM SPEAKERS:", len(speaker_chunks))
 
         audio_messages = []
+        cls_speakers = []
         for chunks in speaker_chunks.values():
-          print("CHUNKSSSSS:", chunks['chunks'])
+          print("CHUNKS:", chunks)
+          if chunks['chunks'][0].size == 0:
+            continue
           speaker_embeddings = audio_embedder.embed_from_raw(chunks['chunks'])
-          speaker_id = db.classify_speaker(speaker_embeddings)
+          speaker_id = None
+          for speaker in db.classify_speaker(speaker_embeddings):
+            if speaker not in cls_speakers:
+              speaker_id = speaker 
+              cls_speakers.append(speaker)
+          if speaker_id is None:
+            speaker_id = db.add_speaker()
           audio_messages.append(
             {
               'speaker_id': speaker_id,
@@ -454,8 +463,7 @@ def set_memories(chat_session_id):
         description: Invalid request data.
     """
     chat_history = request.get_json()
-    
-    messages_robot = [msg['text'] for idx, msg in enumerate(chat_history) if idx % 2 == 1]
+    messages_robot = [msg['text'] for idx, msg in enumerate(chat_history) if idx % 2 == 0]
 
     # Iterate through robot messages and append them as individual turns
     for i, _ in enumerate(messages_robot):
@@ -483,6 +491,7 @@ def set_memories(chat_session_id):
     f"\n\n**Recent Conversations with the clients:**\n
     """
 
+    print("CHAT SESSIONNNNNNNN:", messages[chat_session_id])
     for turn in messages[chat_session_id]:
       for message in turn:
         if message["speaker_id"] == 'robot':
@@ -511,7 +520,7 @@ def set_memories(chat_session_id):
         "chat_session_id": chat_session_id,
         "memory": memory
     }
-    print("SESSIONNNNN", data[chat_session_id])
+    print("SESSION", data[chat_session_id])
     save_memories(data)
     return jsonify({"success": "1"})
 
