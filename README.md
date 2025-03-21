@@ -71,6 +71,7 @@ Flask-based server providing:
 
 ```
 └── StartHack25
+    ├── frontend # contains a react frontend for the demo embedding https://voiceoasis.azurewebsites.net/
     └── src
         ├── speaker_recognition
         │   ├── __init__.py
@@ -124,3 +125,5 @@ Flask-based server providing:
    ```
    python src/relay.py
    ```
+# Remarks
+This implementation is based on the following repository: https://github.com/START-Hack/Helbling_STARTHACK25/tree/main
