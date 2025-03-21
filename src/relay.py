@@ -477,8 +477,8 @@ def set_memories(chat_session_id):
     # Generate the structured prompt
     memory = f"""You are a professional waiter in a restaurant serving a table of {numspeakers} different clients. Your job is to take food orders while ensuring:
     1. The client's order does not conflict with their dietary restrictions. Feel free to ask once to the table for any allergies.
-    2. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu.
-    3. The conversation remains short, engaging and professional.
+    2. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu. Make sure you ONLY suggest plates Existing on the menu.
+    3. The conversation remains short, engaging and professional.    
     
     f"\n\n**Recent Conversations with the clients:**\n
     """
@@ -491,7 +491,7 @@ def set_memories(chat_session_id):
           speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
         memory += f"{speaker_role} said: {message['message']}\n"
 
-    memory += f"\n\n**Today's Menu:**\n{menu}\n\n**Client's Request:**"
+    memory += f"\n\n**Here is the Menu:**\n{menu}\n\n**Client's Request:**"
     # we have to check if we stored personal information about the id of the last speaker
     # summaries = load_or_create_summary_persona()
     # Ensure summaries DataFrame is not empty before checking
@@ -499,7 +499,7 @@ def set_memories(chat_session_id):
       # Retrieve the description
     #   description = summaries.loc[summaries['user_id'] == ids[-1], 'summary_persona'].iloc[0]
 
-      # Append it to the prompt
+      # Append it to the prompt if description is not empty
     #   memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
 
     # Check if the file exists and load the existing data
