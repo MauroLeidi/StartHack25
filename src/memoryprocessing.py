@@ -6,7 +6,7 @@ import pandas as pd
 from .utils import call_openai_api
 
 # File paths for storing memory and user summaries
-summary_persona_file_path = 'summary_personas.csv'
+summary_persona_file_path = '../data/summary_personas.csv'
 
 # Function to initialize or load the summary persona DataFrame
 def load_or_create_summary_persona():

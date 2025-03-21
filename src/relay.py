@@ -493,14 +493,15 @@ def set_memories(chat_session_id):
 
     memory += f"\n\n**Here is the Menu:**\n{menu}\n\n**Client's Request:**"
     # we have to check if we stored personal information about the id of the last speaker
-    # summaries = load_or_create_summary_persona()
-    # Ensure summaries DataFrame is not empty before checking
-    # if not summaries.empty and ids[-1] in summaries['user_id'].values:
-      # Retrieve the description
-    #   description = summaries.loc[summaries['user_id'] == ids[-1], 'summary_persona'].iloc[0]
+    summaries = load_or_create_summary_persona()
 
+    last_speaker_id = messages[chat_session_id][-1][-1]["speaker_id"]
+    # Ensure summaries DataFrame is not empty before checking
+    if not summaries.empty and last_speaker_id in summaries['user_id'].values:
+      # Retrieve the description
+      description = summaries.loc[summaries['user_id'] == last_speaker_id, 'summary_persona'].iloc[0]
       # Append it to the prompt if description is not empty
-    #   memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
+      memory += f" A short description of the last client who spoke you, that can help you decide you what to say next: {description}"
 
     # Check if the file exists and load the existing data
     data = load_memories()
