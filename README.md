@@ -7,7 +7,8 @@
 </h1>
 <p align="center">
 <a href="./presentation.pptx">Presentation (PowerPoint)</a> •
-<a href="./presentation.pdf">Presentation (PDF)</a>
+<a href="./presentation.pdf">Presentation (PDF)</a> •
+<a href="./demo.mp4">Demo (Video)</a>
 </p>
 
 <h4 align="center">An advanced voice recognition system for multi-speaker environments with contextual memory</h4>
