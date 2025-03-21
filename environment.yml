@@ -26,3 +26,4 @@ dependencies:
     - pandas
     - speechbrain
     - funasr
+    - python-dotenv

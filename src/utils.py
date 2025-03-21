@@ -8,7 +8,13 @@ import torch
 import noisereduce as nr
 from scipy.signal import butter, lfilter
 from funasr import AutoModel
+import requests
+import os
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
+API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 def perform_speaker_diarization():
@@ -205,6 +211,27 @@ def recognise_emotion_speech(wav_file_path):
     index_max_score = scores.index(max(scores))
     max_label = labels[index_max_score]
     return index_max_score, max_label
+
+def call_openai_api(prompt):
+    """Helper function to call OpenAI API"""
+    URL = "https://api.openai.com/v1/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "model": "gpt-4o",
+        "messages": [{"role": "user", "content": prompt}]
+    }
+    
+    try:
+        response = requests.post(URL, headers=headers, json=data)
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return f"Error generating persona: {str(e)}"
     
 
 
