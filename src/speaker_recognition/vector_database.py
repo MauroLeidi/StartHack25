@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import reduce_noise
 
 # Adjust according to the model.
-SIMILARITY_THRESHOLD: float = 0.30
+SIMILARITY_THRESHOLD: float = 0.0
 EMBEDDING_DIMS: int = 192
 
 SPEAKER_ID_PREFIX: str = "speaker"
@@ -46,7 +46,7 @@ class VectorDB:
         self.speakers: list[str] = []
         if preload_audios:
             audios_dir = "src/speaker_recognition/audios"
-            audio_files = ["diego-3.wav", "johannes-1.wav", "gio-1.wav", "mauro-2.wav"]
+            audio_files = ["gio-1.wav", "mauro-2.wav"]
             file_paths = [Path(f"{audios_dir}/{path}") for path in audio_files]
             file_numpy = [sf.read(file) for file in file_paths]
             noised_reduced = [reduce_noise(*audio)[1] for audio in file_numpy]
@@ -69,7 +69,7 @@ class VectorDB:
                 potential_speakers, key=lambda x: x[1], reverse=True
             )
             return [x[0] for x in potential_speakers]
-        return self.add_speaker()
+        return [self.add_speaker()]
 
     def add_speaker(self) -> None:
         if not self.speakers:

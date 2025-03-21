@@ -12,7 +12,7 @@ from funasr import AutoModel
 from pyannote.audio import Pipeline
 from pyannote.core import Annotation, Segment
 from scipy.signal import butter, lfilter
-from df.enhance import enhance, init_df, load_audio, save_audio
+#from df.enhance import enhance, init_df, load_audio, save_audio
 import librosa
 
 # Load environment variables
