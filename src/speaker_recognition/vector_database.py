@@ -4,12 +4,14 @@ See `https://github.com/facebookresearch/faiss`__.
 """
 
 import sys
-import torch
+from collections import Counter
+from pathlib import Path
+
 import faiss
 import soundfile as sf
-from pathlib import Path
+import torch
+
 from .embedder import AudioEmbedder
-from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from utils import reduce_noise
@@ -20,12 +22,13 @@ EMBEDDING_DIMS: int = 192
 
 SPEAKER_ID_PREFIX: str = "speaker"
 
+
 class VectorDB:
-    
+
     def __init__(
         self,
         dims: int = EMBEDDING_DIMS,
-        similarity_threshold = SIMILARITY_THRESHOLD,
+        similarity_threshold=SIMILARITY_THRESHOLD,
         preload_audios: bool = True,
     ):
         """Initialize the FAISS database used to perform speaker identification.
@@ -62,7 +65,9 @@ class VectorDB:
         print("POTENTIAL SPEAKERS:", potential_speakers)
         if potential_speakers:
             # Order by descending similarity.
-            potential_speakers = sorted(potential_speakers, key=lambda x: x[1], reverse=True)
+            potential_speakers = sorted(
+                potential_speakers, key=lambda x: x[1], reverse=True
+            )
             return [x[0] for x in potential_speakers]
         return self.add_speaker()
 
