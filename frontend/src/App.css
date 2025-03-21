@@ -139,6 +139,10 @@ body {
   object-fit: contain;
 }
 
+.start-global-logo {
+  height: 60px;
+}
+
 .helbling-logo {
   height: 35px;
   width: auto;
