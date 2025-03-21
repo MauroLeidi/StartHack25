@@ -136,8 +136,6 @@ Flask-based server providing:
 
 # Limitations
 
-# Limitations
-
 - LLM Hallucinations: The system may occasionally produce inaccurate or irrelevant responses due to limitations in language model understanding.
 - Incomplete Dockerization: The current implementation lacks full containerization, which may affect deployment consistency across different environments.
 - Performance in Noisy Environments: In scenarios with multiple background voices, the denoising algorithm's effectiveness may be reduced, impacting overall system performanc, although it should still be considered reliable.
