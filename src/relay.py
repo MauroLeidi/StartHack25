@@ -6,7 +6,7 @@ import os
 import uuid
 from typing import Any, Dict
 
-import librosa
+# import librosa
 import numpy as np
 import soundfile as sf
 import torch
@@ -474,19 +474,21 @@ def set_memories(chat_session_id):
         description: Invalid request data.
     """
     chat_history = request.get_json()
+    _ = [chat.pop('audioFilePath', None) for chat in chat_history]
+    print("CHAT:", chat_history)
     messages_robot = [
         msg["text"] for idx, msg in enumerate(chat_history) if idx % 2 == 0
     ]
 
     # Iterate through robot messages and append them as individual turns
-    for i, _ in enumerate(messages_robot):
+    for i in range(0, len(messages_robot), 2):
         robot_turn = [
             {
                 "speaker_id": "robot",
                 "message": messages_robot[i],
             }
         ]
-        messages[chat_session_id].append(robot_turn)
+        messages[chat_session_id].insert(i, robot_turn)
 
     unique = set(
         msg["speaker_id"] for turn in messages[chat_session_id] for msg in turn
@@ -512,7 +514,10 @@ def set_memories(chat_session_id):
             if message["speaker_id"] == "robot":
                 speaker_role = "You (Waiter)"
             else:
-                speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
+                if "-" in message['speaker_id']:
+                  speaker_role = f"Client {message['speaker_id'].split('-')[1]}"
+                else:
+                  speaker_role = f"Client {message['speaker_id']}"
             memory += f"{speaker_role} said: {message['message']}\n"
 
     memory += f"\n\n**Here is the Menu:**\n{menu}\n\n**Client's Request:**"
