@@ -12,10 +12,26 @@ from funasr import AutoModel
 from pyannote.audio import Pipeline
 from pyannote.core import Annotation, Segment
 from scipy.signal import butter, lfilter
+from df.enhance import enhance, init_df, load_audio, save_audio
+import librosa
 
 # Load environment variables
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
+
+def reduce_noise_with_deepfilternet(audio, sr):
+    MODEL, DF_STATE, _ = init_df()
+    # resample audio to 48kHz
+    resampled_audio = librosa.resample(audio, orig_sr=sr, target_sr=48000)    
+     # Convert resampled_audio to PyTorch tensor
+    tensor_audio = torch.from_numpy(resampled_audio).float().unsqueeze(0)
+    # print(tensor_audio.shape)
+    enhanced = enhance(MODEL, DF_STATE, tensor_audio)
+    # back to numpy array
+    enhanced = enhanced.squeeze().numpy()
+    # resample back to original rate
+    enhanced = librosa.resample(enhanced, orig_sr=48000, target_sr=sr)
+    return enhanced
 
 
 def perform_speaker_diarization():
@@ -191,8 +207,8 @@ def reduce_noise(audio, sampling_rate, use_deep=False):
     # optionally apply bandpass_filter
     # audio = bandpass_filter(audio, sr=sampling_rate)
     # normalize audio, emphasisze voices
-    audio = normalize_audio(audio)
-    print("Audio shape after normalize:", audio.shape)
+    #audio = normalize_audio(audio)
+    #print("Audio shape after normalize:", audio.shape)
     # reduce noise
     # if not use_deep:
     enhanced_audio = nr.reduce_noise(
