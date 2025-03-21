@@ -3,9 +3,10 @@
 </p>
 <h1 align="center">
   <br>
-  StartHack25 Speaker Recognition and Transcription System
+  Adaptis
   <br>
 </h1>
+<h2 align="center">Working With You to Deliver More.</h2>
 
 <h4 align="center">An advanced voice recognition system for multi-speaker environments with contextual memory</h4>
 
