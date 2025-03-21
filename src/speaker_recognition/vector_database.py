@@ -49,9 +49,9 @@ class VectorDB:
             noised_reduced = [reduce_noise(*audio)[1] for audio in file_numpy]
             embeddings = self.embedder.embed_from_files(noised_reduced)
             self.index.add(embeddings)
-            _ = [self._add_speaker() for _ in audio_files]
+            _ = [self.add_speaker() for _ in audio_files]
 
-    def classify_speaker(self, speaker_embeddings: torch.Tensor) -> str:
+    def classify_speaker(self, speaker_embeddings: torch.Tensor) -> list[str]:
         similarities, indices = self.index.search(speaker_embeddings, 4)
         print("SIMS:", similarities)
         print("INDICES:", indices)
@@ -63,11 +63,10 @@ class VectorDB:
         if potential_speakers:
             # Order by descending similarity.
             potential_speakers = sorted(potential_speakers, key=lambda x: x[1], reverse=True)
-            potential_speakers = [x[0] for x in potential_speakers]
-            return Counter(potential_speakers).most_common(1)[0][0]
-        return self._add_speaker()
+            return [x[0] for x in potential_speakers]
+        return self.add_speaker()
 
-    def _add_speaker(self) -> None:
+    def add_speaker(self) -> None:
         if not self.speakers:
             speaker = f"{SPEAKER_ID_PREFIX}-00"
         else:

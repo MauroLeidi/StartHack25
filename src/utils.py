@@ -37,7 +37,7 @@ def perform_speaker_diarization():
     diarization = pipeline("./wav/noise_reduce_out.wav")
     
     # Initialize speech recognition model
-    model = whisper.load_model("tiny.en")
+    model = whisper.load_model("small.en")
     
     # Transcribe audio (using the same BytesIO object)
     asr_result = model.transcribe("./wav/noise_reduce_out.wav")
