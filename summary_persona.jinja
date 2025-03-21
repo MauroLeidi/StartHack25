@@ -1,0 +1,10 @@
+Create a persona description for speaker ID "{{ speaker_id }}" based on their messages and interactions with the robot which is a service provider (e.g., a waitress, bartender, or customer support agent). Bullet-point like note taking. The persona should include the following details: Preferences and meal choices: user’s typical food and drink preferences, including their usual choices for meals, snacks, appetizers, and beverages. Take note of any specific tastes (e.g., health-conscious, sweet tooth, savory, vegetarian, vegan, etc.). Dietary restrictions or allergies: Identify any dietary restrictions, allergies, or intolerances the user mentions (e.g., gluten-free, lactose intolerance, peanut allergies, etc.), and how they communicate or manage these in their decisions. Meal customization: Note any specific requests or modifications the user makes to their order (e.g., dressing on the side, no certain ingredients, preference for portion size, etc.). Attitude towards food: Describe the user’s general attitude or philosophy regarding food (e.g., health-conscious, indulgent, conscious about the environment, etc.). Eating habits: Note if there are any habits or patterns around the user’s eating (e.g., preferring light meals, eating only fruits for dessert, avoiding certain food groups, drinking water with meals, etc.). Additional lifestyle information: Include any relevant details related to their lifestyle that come through in the interaction (e.g., dietary goals, health-conscious practices, fitness focus, or a preference for certain cuisines or dining environments).
+
+The response should only contain the description mentioned above.
+The response should start with "Persona description for speaker ID "{{ speaker_id }}"
+
+
+Conversation/Interactions:
+{% for message in conversation %}
+- {{ message.speaker_id }}: "{{ message.message }}"
+{% endfor %}
