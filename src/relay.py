@@ -394,7 +394,6 @@ def close_session(chat_session_id, session_id):
             ws.send(json.dumps(message))
     # # Remove from session store
     sessions.pop(session_id, None)
-    print("FIRST TIMEEEEEEEEEE:", first_time)
     if first_time:
       _set_memories(chat_session_id)
     return jsonify({"status": "session_closed"})
@@ -523,11 +522,10 @@ def _set_memories(chat_session_id):
     2. The client's order does not conflict with their dietary restrictions. Feel free to ask once to the table for any allergies.
     3. The requested items are available on the menu; otherwise, suggest similar alternatives from the menu. Make sure you ONLY suggest plates Existing on the menu.
     4. The conversation remains short, engaging and professional.    
-    
-    f"\n\n**Recent Conversations with the clients:**\n
+    \n\n**Recent Conversations with the clients:**\n
     """
 
-    print("CHAT SESSIONNNNNNNN:", messages[chat_session_id])
+    print("CHAT SESSION:", messages[chat_session_id])
     for turn in messages[chat_session_id]:
         for message in turn:
             if message["speaker_id"] == "robot":
